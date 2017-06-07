@@ -1,12 +1,10 @@
 # JavaScript期末大作业 
 
-## JavaScript语言新动向：async await
-
-### 目前最好的JavaScript异步方案async await
+## 目前最好的JavaScript异步方案async await
 
 构建一个应用程序总是会面对异步调用，不论是在 Web 前端界面，还是 Node.js 服务端都是如此，JavaScript 里面处理异步调用一直是非常恶心的一件事情。以前只能通过回调函数，后来渐渐又演化出来很多方案，最后 Promise 以简单、易用、兼容性好取胜，但是仍然有非常多的问题。其实 JavaScript 一直想在语言层面彻底解决这个问题，在 ES6 中就已经支持原生的 Promise，还引入了 Generator 函数，终于在 ES7 中决定支持 async 和 await。
 
-#### 基本语法
+### 基本语法
 
 async/await 究竟是怎么解决异步调用的写法呢？简单来说，就是将异步操作用同步的写法来写。先来看下最基本的语法：async 表示`这是一个async函数`，`await只能用在这个函数里面`。await 表示在这里`等待promise返回结果`了，再继续执行。await 后面跟着的`应该是一个promise对象`
 
@@ -49,7 +47,7 @@ var start = async function () {
 };
 ```
 
-#### 一个例子
+### 一个例子
 
 Async/Await应该是目前最简单的异步方案了，首先来看个例子。
 
@@ -76,7 +74,7 @@ start();
 
 控制台先输出`start`，稍等`3秒`后，输出了`end`。
 
-#### 对比 Promise
+### 对比 Promise
 
 仅仅是一个简单的调用，就已经能够看出来 async/await 的强大，写码时可以非常优雅地处理异步函数，彻底告别回调恶梦和无数的 `then` 方法。我们再来看下与 Promise 的对比，同样的代码，如果完全使用 Promise 会有什么问题呢？
 
@@ -100,7 +98,7 @@ testAsync();
 
 从代码片段中不难看出 Promise 没有解决好的事情，比如要有很多的 `then`方法，整块代码会充满 Promise 的方法，而不是业务逻辑本身，而且每一个 `then` 方法内部是一个独立的作用域，要是想共享数据，就要将部分数据暴露在最外层，在 `then` 内部赋值一次。虽然如此，Promise 对于异步操作的封装还是非常不错的，所以 `async/await` 是基于 Promise 的， `await` 后面是要接收一个 Promise 实例。
 
-#### 异常处理
+### 异常处理
 
 通过使用 async/await，我们就可以配合 try/catch 来捕获异步操作过程中的问题，包括 Promise 中 reject 的数据。
 
@@ -185,7 +183,7 @@ var start = async function () {
 
 既然`.then(..)`不用写了，那么`.catch(..)`也不用写，可以直接用标准的`try catch`语法捕捉错误。
 
-#### 循环多个await
+### 循环多个await
 
 await看起来就像是同步代码，所以可以理所当然的写在`for`循环里，不必担心以往需要`闭包`才能解决的问题。
 
@@ -207,15 +205,226 @@ var start = async function () {
 
 let 一到十 = [1,2,3,4,5,6,7,8,9,10];
 
-// 错误示范
+//错误示范
 一到十.forEach(function (v) {
     console.log(`当前是第${v}次等待..`);
     await sleep(1000); // 错误!! await只能在async函数中运行
 });
 
-// 正确示范
+//正确示范
 for(var v of 一到十) {
     console.log(`当前是第${v}次等待..`);
     await sleep(1000); // 正确, for循环的上下文还在async函数中
 }
 ```
+## vue.js 轻巧、高性能的前端组件化方案
+
+### 基本信息
+
+vue是法语中视图的意思，vue.js是一个轻巧、高性能、可组件化的MVVM库，同时拥有非常容易上手的API。
+
+### 安装
+
+使用npm安装：
+
+```javascript
+npm install vue
+```
+
+当然你也可以在github上clone最新的版本并作为单文件引入，或者使用CDN:
+
+```
+http://cdn.jsdelivr.net/vue/1.0.7/vue.min.js
+http://cdnjs.cloudflare.com/ajax/libs/vue/1.0.7/vue.min.js
+```
+
+### 一个例子
+
+app.html:
+
+```html
+<div id="app">
+    <div>{{message}}</div>
+    <input type="text" v-model="message">
+</div>
+```
+
+app.js:
+
+```javascript
+new Vue({
+    el:'#app',
+    data: {
+        message:'hello vue.js.'
+    }
+});
+```
+
+在使用Vue.js之前，我们需要先像这样实例化一个Vue对象：
+
+```javascript
+new Vue({
+   el:'#app'
+});
+```
+
+
+
+### 响应的数据绑定
+
+vue.js 的核心是一个响应的数据绑定系统，它让数据与 DOM 保持同步非常简单。
+
+```html
+<!--html页面-->
+<div id="example">
+    hello {{name}}
+</div>
+```
+
+```javascript
+//js文件
+var exampleData = {
+  name: 'Vue.js'
+}
+
+// 创建一个 Vue 实例或 "ViewModel"
+// 它连接 View 与 Model
+var exampleVM = new Vue({
+  el: '#example',
+  data: exampleData
+})
+```
+
+![Vue.js 快速入门](http://static.open-open.com/lib/uploadImg/20151109/20151109171527_549.png)
+
+就像HelloWorld展示的那样，app.html是view层，app.js是model层，通过vue.js（使用v-model这个指令）完成中间的底层逻辑，实现绑定的效果。改变其中的任何一层，另外一层都会改变。
+
+### 指令
+
+指令 (Directives) 是特殊的带有前缀 v- 的特性。指令的值限定为**绑定表达式**，因此上面提到的 JavaScript 表达式及过滤器规则在这里也适用。指令的职责就是当其表达式的值改变时把某些特殊的行为应用到 DOM 上.
+
+#### v-on指令用于监听 DOM 事件
+
+```html
+<!--html页面-->
+<div id="example">
+    <p>{{msg}}</p>
+    <button v-on:click="change">hello</button>
+</div>
+```
+
+```javascript
+//js文件
+
+var vm = new Vue({
+  el: '#example',
+  data:{
+        msg:"first"
+   },
+   method:{
+       change:function(){
+              this.msg = "second"
+        }, 
+   }, 
+})
+```
+
+#### v-bind 指令用于响应地更新 HTML 特性
+
+```html
+<!--html页面-->
+<div id="example">
+    <!--绑定url-->
+    <a v-bind:href="url"></a>
+
+    <!--绑定class-->
+    <div v-bind:class="classA"></div>
+</div>
+```
+
+```javascript
+//js文件
+var vm = new Vue({
+    el:"example",
+    data:{
+        url:"http://cn.vuejs.org/",
+        classA:"container",
+    },
+})
+```
+
+#### v-for指令用于渲染列表
+
+这个指令使用特殊的语法，形式为item in items，items 是数据数组，item 是当前数组元素的别名.
+
+```html
+<!--html页面-->
+<ul id="example-1">
+  <li v-for="item in items">
+    {{ item.message }}
+  </li>
+</ul>
+```
+
+```javascript
+var example1 = new Vue({
+  el: '#example-1',
+  data: {
+    items: [
+      { message: 'Foo' },
+      { message: 'Bar' }
+    ]
+  }
+})
+```
+
+#### v-model指令用于数据双向绑定
+
+```html
+<!--html页面-->
+<div id="example">
+    <span>Message is: {{ message }}</span>
+    <br>
+    <input type="text" v-model="message" placeholder="edit me">
+</div>
+```
+
+```javascript
+//js文件
+var vm = new Vue({
+    el:"example",
+    data:{
+        message:'',
+    },
+})
+```
+
+#### v-if条件渲染
+
+```html
+<div id ="example">
+    <h1 v-if="ok">Yes</h1>
+    <h1 v-else>No</h1>
+     <button v-on:click="changeOk">hello</div>
+</div>
+```
+
+```javascript
+var vm = new Vue({
+    el:"example",
+    data:{
+        ok:true,
+    },
+    methods:{
+        changeOk:function(){
+            this.ok = false
+        }
+    }
+})
+```
+
+
+
+### 总结
+
+在发布之初，Vue.js原本是着眼于轻量的嵌入式使用场景。在今天，Vue.js也依然适用于这样的场景。由于其轻量（22kb min+gzip）、高性能的特点，对于移动场景也有很好的契合度。更重要的是，设计完备的组件系统和配套的构建工具、插件，使得Vue.js在保留了其简洁API的同时，也已经完全有能力担当起复杂的大型应用的开发。
