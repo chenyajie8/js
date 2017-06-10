@@ -1,4 +1,4 @@
-# JavaScript期末大作业 
+# ``JavaScript期末大作业 
 
 ## 目前最好的JavaScript异步方案async await
 
@@ -428,3 +428,209 @@ var vm = new Vue({
 ### 总结
 
 在发布之初，Vue.js原本是着眼于轻量的嵌入式使用场景。在今天，Vue.js也依然适用于这样的场景。由于其轻量（22kb min+gzip）、高性能的特点，对于移动场景也有很好的契合度。更重要的是，设计完备的组件系统和配套的构建工具、插件，使得Vue.js在保留了其简洁API的同时，也已经完全有能力担当起复杂的大型应用的开发。
+
+
+
+## Vue原理解析之Virtual Dom
+
+`DOM`是文档对象模型(`Document Object Model`)的简写，在浏览器中我们可以通过js来操作`DOM`，但是这样的操作性能很差，于是`Virtual Dom`应运而生。我的理解，`Virtual Dom`就是在js中模拟`DOM`对象树来优化`DOM`操作的一种技术或思路。
+
+### VNode对象
+
+一个VNode的实例对象包含了以下属性
+
+![img](https://segmentfault.com/img/bVITKL?w=419&h=458)
+
+- `tag`: 当前节点的标签名
+
+- `data`: 当前节点的数据对象，具体包含哪些字段可以参考vue源码`types/vnode.d.ts`中对`VNodeData`的定义
+
+- `children`: 数组类型，包含了当前节点的子节点
+
+- `text`: 当前节点的文本，一般文本节点或注释节点会有该属性
+
+- `elm`: 当前虚拟节点对应的真实的dom节点
+
+- `ns`: 节点的namespace
+
+- `context`: 编译作用域
+
+- `functionalContext`: 函数化组件的作用域
+
+- `key`: 节点的key属性，用于作为节点的标识，有利于patch的优化
+
+- `componentOptions`: 创建组件实例时会用到的选项信息
+
+- `child`: 当前节点对应的组件实例
+
+- `parent`: 组件的占位节点
+
+- `raw`: raw html
+
+- `isStatic`: 静态节点的标识
+
+- `isRootInsert`: 是否作为根节点插入，被`<transition>`包裹的节点，该属性的值为`false`
+
+- `isComment`: 当前节点是否是注释节点
+
+- `isCloned`: 当前节点是否为克隆节点
+
+- `isOnce`: 当前节点是否有`v-once`指令
+
+  ## VNode分类
+
+  ![img](https://segmentfault.com/img/bVITTR?w=495&h=540)
+
+`VNode`可以理解为vue框架的虚拟dom的基类，通过`new`实例化的`VNode`大致可以分为几类
+
+- `EmptyVNode`: 没有内容的注释节点
+- `TextVNode`: 文本节点
+- `ElementVNode`: 普通元素节点
+- `ComponentVNode`: 组件节点
+- `CloneVNode`: 克隆节点，可以是以上任意类型的节点，唯一的区别在于`isCloned`属性为`true`
+
+### createElement解析
+
+```javascript
+const SIMPLE_NORMALIZE = 1
+const ALWAYS_NORMALIZE = 2
+
+function createElement (context, tag, data, children, normalizationType, alwaysNormalize) {
+  // 兼容不传data的情况
+  if (Array.isArray(data) || isPrimitive(data)) {
+    normalizationType = children
+    children = data
+    data = undefined
+  }
+  // 如果alwaysNormalize是true
+  // 那么normalizationType应该设置为常量ALWAYS_NORMALIZE的值
+  if (alwaysNormalize) normalizationType = ALWAYS_NORMALIZE
+  // 调用_createElement创建虚拟节点
+  return _createElement(context, tag, data, children, normalizationType)
+}
+
+function _createElement (context, tag, data, children, normalizationType) {
+  /**
+   * 如果存在data.__ob__，说明data是被Observer观察的数据
+   * 不能用作虚拟节点的data
+   * 需要抛出警告，并返回一个空节点
+   * 
+   * 被监控的data不能被用作vnode渲染的数据的原因是：
+   * data在vnode渲染过程中可能会被改变，这样会触发监控，导致不符合预期的操作
+   */
+  if (data && data.__ob__) {
+    process.env.NODE_ENV !== 'production' && warn(
+      `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
+      'Always create fresh vnode data objects in each render!',
+      context
+    )
+    return createEmptyVNode()
+  }
+  // 当组件的is属性被设置为一个falsy的值
+  // Vue将不会知道要把这个组件渲染成什么
+  // 所以渲染一个空节点
+  if (!tag) {
+    return createEmptyVNode()
+  }
+  // 作用域插槽
+  if (Array.isArray(children) &&
+      typeof children[0] === 'function') {
+    data = data || {}
+    data.scopedSlots = { default: children[0] }
+    children.length = 0
+  }
+  // 根据normalizationType的值，选择不同的处理方法
+  if (normalizationType === ALWAYS_NORMALIZE) {
+    children = normalizeChildren(children)
+  } else if (normalizationType === SIMPLE_NORMALIZE) {
+    children = simpleNormalizeChildren(children)
+  }
+  let vnode, ns
+  // 如果标签名是字符串类型
+  if (typeof tag === 'string') {
+    let Ctor
+    // 获取标签名的命名空间
+    ns = config.getTagNamespace(tag)
+    // 判断是否为保留标签
+    if (config.isReservedTag(tag)) {
+      // 如果是保留标签,就创建一个这样的vnode
+      vnode = new VNode(
+        config.parsePlatformTagName(tag), data, children,
+        undefined, undefined, context
+      )
+      // 如果不是保留标签，那么我们将尝试从vm的components上查找是否有这个标签的定义
+    } else if ((Ctor = resolveAsset(context.$options, 'components', tag))) {
+      // 如果找到了这个标签的定义，就以此创建虚拟组件节点
+      vnode = createComponent(Ctor, data, context, children, tag)
+    } else {
+      // 兜底方案，正常创建一个vnode
+      vnode = new VNode(
+        tag, data, children,
+        undefined, undefined, context
+      )
+    }
+    // 当tag不是字符串的时候，我们认为tag是组件的构造类
+    // 所以直接创建
+  } else {
+    vnode = createComponent(tag, data, context, children)
+  }
+  // 如果有vnode
+  if (vnode) {
+    // 如果有namespace，就应用下namespace，然后返回vnode
+    if (ns) applyNS(vnode, ns)
+    return vnode
+  // 否则，返回一个空节点
+  } else {
+    return createEmptyVNode()
+  }
+}
+```
+
+### patch原理
+
+`patch`函数接收6个参数：
+
+- `oldVnode`: 旧的虚拟节点或旧的真实dom节点
+- `vnode`: 新的虚拟节点
+- `hydrating`: 是否要跟真是dom混合
+- `removeOnly`: 特殊flag，用于`<transition-group>`组件
+- `parentElm`: 父节点
+- `refElm`: 新节点将插入到`refElm`之前
+
+`patch`的策略是：
+
+1. 如果`vnode`不存在但是`oldVnode`存在，说明意图是要销毁老节点，那么就调用`invokeDestroyHook(oldVnode)`来进行销毁
+
+2. 如果`oldVnode`不存在但是`vnode`存在，说明意图是要创建新节点，那么就调用`createElm`来创建新节点
+
+3. 当`vnode`和`oldVnode`都存在时
+
+   - 如果`oldVnode`和`vnode`是同一个节点，就调用`patchVnode`来进行`patch`
+   - 当`vnode`和`oldVnode`不是同一个节点时，如果`oldVnode`是真实dom节点或`hydrating`设置为`true`，需要用`hydrate`函数将虚拟dom和真是dom进行映射，然后将`oldVnode`设置为对应的虚拟dom，找到`oldVnode.elm`的父节点，根据vnode创建一个真实dom节点并插入到该父节点中`oldVnode.elm`的位置
+
+   这里面值得一提的是`patchVnode`函数，因为真正的patch算法是由它来实现的（patchVnode中更新子节点的算法其实是在`updateChildren`函数中实现的，为了便于理解，我统一放到`patchVnode`中来解释）。
+
+### 生命周期
+
+`patch`提供了5个生命周期钩子，分别是
+
+- `create`: 创建patch时
+- `activate`: 激活组件时
+- `update`: 更新节点时
+- `remove`: 移除节点时
+- `destroy`: 销毁节点时
+
+这些钩子是提供给Vue内部的`directives`/`ref`/`attrs`/`style`等模块使用的，方便这些模块在patch的不同阶段进行相应的操作，这里模块定义在`src/core/vdom/modules`和`src/platforms/web/runtime/modules`2个目录中
+
+`vnode`也提供了生命周期钩子，分别是
+
+- `init`: vdom初始化时
+- `create`: vdom创建时
+- `prepatch`: patch之前
+- `insert`: vdom插入后
+- `update`: vdom更新前
+- `postpatch`: patch之后
+- `remove`: vdom移除时
+- `destroy`: vdom销毁时
+
+vue组件的生命周期底层其实就依赖于vnode的生命周期，在`src/core/vdom/create-component.js`中我们可以看到，vue为自己的组件vnode已经写好了默认的`init`/`prepatch`/`insert`/`destroy`，而vue组件的`mounted`/`activated`就是在`insert`中触发的，`deactivated`就是在`destroy`中触发的
