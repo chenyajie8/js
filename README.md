@@ -1,4 +1,4 @@
-# ``JavaScript期末大作业 
+# JavaScript期末大作业 
 
 ## 目前最好的JavaScript异步方案async await
 
